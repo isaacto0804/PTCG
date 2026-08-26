@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <title>PTCG 卡牌交易市集</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .controls { margin-bottom: 20px; display: flex; gap: 10px; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .card img { width: 100%; border-radius: 4px; }
+    .price { color: #e44d26; font-size: 1.2em; font-weight: bold; }
+    .btn-buy { background: #25D366; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h1>PTCG 卡牌庫存目錄</h1>
+
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="搜尋卡牌名稱 / 卡號..." oninput="filterAndSort()">
+    <select id="sortSelect" onchange="filterAndSort()">
+      <option value="asc">價格：由低至高</option>
+      <option value="desc">價格：由高至低</option>
+    </select>
+  </div>
+
+  <div class="card-grid" id="cardContainer">載入卡牌資料中...</div>
+
+  <script>
+    // 替換成你的 Google Sheet ID 及工作表名稱
+    const SHEET_ID = '你的_GOOGLE_SHEET_ID';
+    const SHEET_NAME = 'Sheet1'; 
+    const API_URL = `https://opensheet.elk.sh/${SHEET_ID}/${SHEET_NAME}`;
+    
+    let allCards = [];
+
+    // 從 Google Sheets 抓取資料
+    async function fetchCards() {
+      try {
+        const response = await fetch(API_URL);
+        allCards = await response.json();
+        filterAndSort();
+      } catch (error) {
+        document.getElementById('cardContainer').innerText = '資料載入失敗，請檢查 Sheet ID。';
+      }
+    }
+
+    // 篩選與排價功能
+    function filterAndSort() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const sortOrder = document.getElementById('sortSelect').value;
+
+      let filtered = allCards.filter(card => 
+        card.name.toLowerCase().includes(query) || 
+        card.card_code.toLowerCase().includes(query)
+      );
+
+      filtered.sort((a, b) => {
+        return sortOrder === 'asc' ? Number(a.price) - Number(b.price) : Number(b.price) - Number(a.price);
+      });
+
+      renderCards(filtered);
+    }
+
+    // 渲染卡牌列表與 WhatsApp 購買按鈕
+    function renderCards(cards) {
+      const container = document.getElementById('cardContainer');
+      container.innerHTML = '';
+
+      cards.forEach(card => {
+        const waMsg = encodeURIComponent(`你好，我想購買：${card.name} (${card.card_code}) - 品相：${card.condition} - 價錢：HK$${card.price}`);
+        const waUrl = `https://wa.me/85212345678?text=${waMsg}`; // 替換成你的 WhatsApp 號碼
+
+        container.innerHTML += `
+          <div class="card">
+            <img src="${card.image_url}" alt="${card.name}">
+            <h3>${card.name}</h3>
+            <p>卡號：${card.card_code}</p>
+            <p>品相：${card.condition}</p>
+            <p class="price">HK$ ${card.price}</p>
+            <a href="${waUrl}" target="_blank" class="btn-buy">WhatsApp 購買</a>
+          </div>
+        `;
+      });
+    }
+
+    fetchCards();
+  </script>
+</body>
+</html>
